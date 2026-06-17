@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingCart, Search, Menu, X, RefreshCw, LogIn, LogOut, User, Shield, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, LogIn, LogOut, User, Shield, ChevronDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { CATEGORIES } from '../types';
@@ -33,9 +33,11 @@ export function Header() {
             onClick={() => { navigate({ name: 'home' }); setMenuOpen(false); }}
             className="flex items-center gap-2 shrink-0 group"
           >
-            <div className="w-9 h-9 bg-green-600 rounded-lg flex items-center justify-center group-hover:bg-green-500 transition-colors">
-              <RefreshCw className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/images/image.png"
+              alt="Retro-Tech Revival"
+              className="w-10 h-10 object-contain rounded-lg"
+            />
             <div className="hidden sm:block">
               <div className="font-bold text-sm leading-tight font-['Space_Grotesk']">Retro-Tech</div>
               <div className="text-green-400 text-xs font-medium leading-tight">Revival</div>

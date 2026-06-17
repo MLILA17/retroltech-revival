@@ -1,11 +1,13 @@
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, ArrowLeft, LogIn } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { formatTZS } from '../types';
 
 const DELIVERY_FEE = 0;
 
 export function CartPage() {
   const { cart, navigate } = useApp();
+  const { user } = useAuth();
   const { items, removeFromCart, updateQuantity, subtotal } = cart;
   const total = subtotal + DELIVERY_FEE;
 
@@ -132,10 +134,24 @@ export function CartPage() {
               </div>
 
               <button
-                onClick={() => navigate({ name: 'checkout' })}
+                onClick={() => {
+                  if (!user) {
+                    window.location.hash = '#/auth?return=checkout';
+                  } else {
+                    navigate({ name: 'checkout' });
+                  }
+                }}
                 className="w-full mt-5 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-xl transition-colors"
               >
-                Proceed to Checkout <ArrowRight className="w-4 h-4" />
+                {user ? (
+                  <>
+                    Proceed to Checkout <ArrowRight className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" /> Sign In to Checkout
+                  </>
+                )}
               </button>
 
               <p className="text-xs text-center text-gray-400 mt-3">

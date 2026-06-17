@@ -4,15 +4,27 @@ import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { Product, Order, formatTZS, CATEGORIES } from '../types';
 import {
-  Shield, ArrowLeft, Loader2, Package, ShoppingBag, DollarSign,
+  Shield, ArrowLeft, Loader2, Package, ShoppingBag, DollarSign, CreditCard,
   Plus, Trash2, Edit, Save, X, CheckCircle, Clock, AlertCircle,
   ChevronDown, ChevronUp, Search, Image, Box
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'products' | 'orders';
+type Tab = 'dashboard' | 'products' | 'orders' | 'transactions';
 
 interface OrderWithItems extends Order {
   items?: { product_name: string; quantity: number; total_price: number }[];
+}
+
+interface Transaction {
+  id: string;
+  order_id: string;
+  type: string;
+  status: string;
+  amount: number | null;
+  method: string | null;
+  reference: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
 }
 
 export function AdminPage() {
@@ -21,8 +33,9 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, totalRevenue: 0, pendingOrders: 0 });
+  const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, totalRevenue: 0, pendingOrders: 0, totalTransactions: 0 });
   const [productSearch, setProductSearch] = useState('');
   const [orderFilter, setOrderFilter] = useState('all');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -56,17 +69,20 @@ export function AdminPage() {
 
   async function fetchData() {
     setLoading(true);
-    const [{ data: prodData }, { data: orderData }] = await Promise.all([
+    const [{ data: prodData }, { data: orderData }, { data: txnData }] = await Promise.all([
       supabase.from('products').select('*').order('created_at', { ascending: false }),
       supabase.from('orders').select('*').order('created_at', { ascending: false }),
+      supabase.from('transactions').select('*').order('created_at', { ascending: false }),
     ]);
     setProducts(prodData || []);
     setOrders(orderData || []);
+    setTransactions(txnData || []);
     setStats({
       totalProducts: (prodData || []).length,
       totalOrders: (orderData || []).length,
       totalRevenue: (orderData || []).filter(o => o.payment_status === 'completed').reduce((sum, o) => sum + o.total_amount, 0),
       pendingOrders: (orderData || []).filter(o => o.status === 'pending').length,
+      totalTransactions: (txnData || []).length,
     });
     setLoading(false);
   }
@@ -237,6 +253,7 @@ export function AdminPage() {
               { key: 'dashboard' as Tab, label: 'Dashboard', icon: DollarSign },
               { key: 'products' as Tab, label: 'Products', icon: Package },
               { key: 'orders' as Tab, label: 'Orders', icon: ShoppingBag },
+              { key: 'transactions' as Tab, label: 'Transactions', icon: CreditCard },
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -268,12 +285,13 @@ export function AdminPage() {
         {/* Dashboard */}
         {tab === 'dashboard' && (
           <div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               {[
                 { label: 'Total Products', value: stats.totalProducts, icon: Package, color: 'bg-blue-50 text-blue-600' },
                 { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-green-50 text-green-600' },
                 { label: 'Total Revenue', value: formatTZS(stats.totalRevenue), icon: DollarSign, color: 'bg-amber-50 text-amber-600' },
                 { label: 'Pending Orders', value: stats.pendingOrders, icon: Clock, color: 'bg-red-50 text-red-600' },
+                { label: 'Transactions', value: stats.totalTransactions, icon: CreditCard, color: 'bg-purple-50 text-purple-600' },
               ].map(({ label, value, icon: Icon, color }) => (
                 <div key={label} className="bg-white rounded-xl border border-gray-100 p-5">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${color}`}>
@@ -678,6 +696,74 @@ export function AdminPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Transactions */}
+        {tab === 'transactions' && (
+          <div>
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Date</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Order</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Type</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Amount</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Method</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center">
+                          <Loader2 className="w-5 h-5 animate-spin text-gray-400 mx-auto" />
+                        </td>
+                      </tr>
+                    ) : transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500 text-sm">
+                          No transactions yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      transactions.map(txn => (
+                        <tr key={txn.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                          <td className="px-4 py-3 text-gray-600 text-xs">
+                            {new Date(txn.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-medium text-gray-900 text-xs">{txn.order_id?.slice(0, 8)}...</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-medium capitalize text-gray-700">{txn.type}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              txn.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              txn.status === 'failed' ? 'bg-red-100 text-red-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>{txn.status}</span>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            {txn.amount ? formatTZS(txn.amount) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 text-xs">
+                            {txn.method || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">
+                            {txn.reference || '—'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

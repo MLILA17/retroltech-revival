@@ -142,6 +142,40 @@ export function CheckoutPage() {
         })
         .eq('id', order.id);
 
+      // Send order confirmation notifications
+      try {
+        const logoUrl = `${window.location.origin}/images/image.png`;
+        const amount = `TZS ${total.toLocaleString()}`;
+
+        if (form.email) {
+          await supabase.functions.invoke('send-email', {
+            body: {
+              to: form.email,
+              subject: `Order Confirmation — #${orderNumber}`,
+              type: 'order_confirmation',
+              orderNumber,
+              amount,
+              status: 'Pending',
+              logoUrl,
+            },
+          });
+        }
+
+        if (form.phone) {
+          await supabase.functions.invoke('send-sms', {
+            body: {
+              phone: form.phone,
+              type: 'order_confirmation',
+              orderId: order.id,
+              orderNumber,
+              amount,
+            },
+          });
+        }
+      } catch (e) {
+        // Notifications failure should not block checkout
+      }
+
       clearCart();
 
       // Redirect to Snippe checkout

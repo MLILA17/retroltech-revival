@@ -8,6 +8,112 @@ const corsHeaders = {
 };
 
 const WEBHOOK_SECRET = "whsec_5d86ed5914da782f58011932eb2e45d9197c19ec44efc1d44bf4c4bc4da01c2f";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_DvoZLyrq_DzSJ9D4UxP174Da3yGuUNC7F";
+const FROM_EMAIL = "daudymussa1705@gmail.com";
+const RAFIKI_API_KEY = Deno.env.get("RAFIKI_API_KEY") || "sk_HbDq195unGBJmaiuj8hvwg4r1NyeUHUn5gW7hTA7b5DGkmIV";
+const RAFIKI_SENDER_ID = "DMLTECH";
+
+const LOGO_URL = "https://vywdpyaxkdhtnyoaumkn.supabase.co/storage/v1/object/public/public/logo.png";
+
+function normalizePhone(phone: string): string {
+  const cleaned = phone.replace(/\s+/g, "");
+  if (cleaned.startsWith("+255")) return cleaned.slice(1);
+  if (cleaned.startsWith("255")) return cleaned;
+  if (cleaned.startsWith("0")) return `255${cleaned.slice(1)}`;
+  return `255${cleaned}`;
+}
+
+async function sendEmail(to: string, subject: string, type: string, payload: any) {
+  try {
+    const body: any = { to, subject, type, logoUrl: LOGO_URL };
+
+    if (type === "order_confirmation" || type === "payment_successful" || type === "order_shipped" || type === "payment_failed") {
+      body.orderNumber = payload.orderNumber;
+      body.amount = payload.amount;
+      body.status = payload.status;
+    } else if (type === "email_confirmation") {
+      body.body = payload.confirmUrl;
+    } else {
+      body.body = payload.body;
+    }
+
+    const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")!}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("Email send error:", data);
+    } else {
+      console.log("Email sent:", type, "to:", to);
+    }
+  } catch (err) {
+    console.error("Email send exception:", err);
+  }
+}
+
+async function sendSMS(phone: string, type: string, payload: any) {
+  try {
+    const body: any = { phone, type, orderId: payload.orderId, orderNumber: payload.orderNumber, amount: payload.amount };
+
+    const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")!}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("SMS send error:", data);
+    } else {
+      console.log("SMS sent:", type, "to:", phone);
+    }
+  } catch (err) {
+    console.error("SMS send exception:", err);
+  }
+}
+
+async function logTransaction(supabase: any, orderId: string, type: string, status: string, amount: number | null, method: string | null, reference: string | null) {
+  try {
+    const { error } = await supabase.from("transactions").insert({
+      order_id: orderId,
+      type,
+      status,
+      amount,
+      method,
+      reference,
+    });
+    if (error) console.error("Transaction log error:", error);
+  } catch (err) {
+    console.error("Transaction log exception:", err);
+  }
+}
+
+async function getOrder(supabase: any, orderId: string) {
+  const { data } = await supabase
+    .from("orders")
+    .select("id, order_number, customer_name, customer_email, customer_phone, total_amount, status, payment_status")
+    .eq("id", orderId)
+    .single();
+  return data;
+}
+
+async function getOrderBySessionRef(supabase: any, sessionRef: string) {
+  const { data } = await supabase
+    .from("orders")
+    .select("id, order_number, customer_name, customer_email, customer_phone, total_amount, status, payment_status")
+    .eq("snippe_session_reference", sessionRef)
+    .single();
+  return data;
+}
 
 async function verifySignature(rawBody: string, timestamp: string, signature: string): Promise<boolean> {
   try {
@@ -24,7 +130,6 @@ async function verifySignature(rawBody: string, timestamp: string, signature: st
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // Constant-time comparison
     if (expected.length !== signature.length) return false;
     let mismatch = 0;
     for (let i = 0; i < expected.length; i++) {
@@ -47,7 +152,6 @@ Deno.serve(async (req: Request) => {
     const timestamp = req.headers.get("x-webhook-timestamp") || "";
     const signature = req.headers.get("x-webhook-signature") || "";
 
-    // Verify signature if present (skip in development when no signature sent)
     if (signature) {
       const valid = await verifySignature(rawBody, timestamp, signature);
       if (!valid) {
@@ -57,8 +161,6 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      // Reject replays older than 5 minutes
       const eventTime = parseInt(timestamp, 10);
       const now = Math.floor(Date.now() / 1000);
       if (now - eventTime > 300) {
@@ -80,28 +182,53 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    if (type === "payment.completed") {
-      const orderId = data?.metadata?.order_id;
-      const sessionRef = data?.session_reference;
+    let order = null;
+    const orderId = data?.metadata?.order_id;
+    const sessionRef = data?.session_reference;
 
+    if (orderId) {
+      order = await getOrder(supabase, orderId);
+    } else if (sessionRef) {
+      order = await getOrderBySessionRef(supabase, sessionRef);
+    }
+
+    if (type === "payment.completed") {
       if (orderId) {
-        const { error } = await supabase
+        await supabase
           .from("orders")
           .update({ payment_status: "completed", status: "processing" })
           .eq("id", orderId);
-        if (error) console.error("DB update error:", error);
-        else console.log("Order", orderId, "marked as completed");
       } else if (sessionRef) {
-        const { error } = await supabase
+        await supabase
           .from("orders")
           .update({ payment_status: "completed", status: "processing" })
           .eq("snippe_session_reference", sessionRef);
-        if (error) console.error("DB update error by session ref:", error);
+      }
+
+      if (order) {
+        const amount = order.total_amount;
+        const method = data?.payment_method || "mobile_money";
+        const ref = data?.reference || sessionRef;
+
+        await logTransaction(supabase, order.id, "payment", "completed", amount, method, ref);
+
+        if (order.customer_email) {
+          await sendEmail(order.customer_email, "Payment Successful — Retro-Tech Revival", "payment_successful", {
+            orderNumber: order.order_number,
+            amount: `TZS ${amount.toLocaleString()}`,
+            status: "Completed",
+          });
+        }
+
+        if (order.customer_phone) {
+          await sendSMS(order.customer_phone, "payment_successful", {
+            orderId: order.id,
+            orderNumber: order.order_number,
+            amount: `TZS ${amount.toLocaleString()}`,
+          });
+        }
       }
     } else if (type === "payment.failed" || type === "payment.voided" || type === "payment.expired") {
-      const orderId = data?.metadata?.order_id;
-      const sessionRef = data?.session_reference;
-
       if (orderId) {
         await supabase
           .from("orders")
@@ -112,6 +239,46 @@ Deno.serve(async (req: Request) => {
           .from("orders")
           .update({ payment_status: "failed" })
           .eq("snippe_session_reference", sessionRef);
+      }
+
+      if (order) {
+        const amount = order.total_amount;
+        const method = data?.payment_method || "mobile_money";
+        const ref = data?.reference || sessionRef;
+
+        await logTransaction(supabase, order.id, "payment", "failed", amount, method, ref);
+
+        if (order.customer_email) {
+          await sendEmail(order.customer_email, "Payment Failed — Retro-Tech Revival", "payment_failed", {
+            orderNumber: order.order_number,
+            amount: `TZS ${amount.toLocaleString()}`,
+            status: "Failed",
+          });
+        }
+
+        if (order.customer_phone) {
+          await sendSMS(order.customer_phone, "payment_failed", {
+            orderId: order.id,
+            orderNumber: order.order_number,
+            amount: `TZS ${amount.toLocaleString()}`,
+          });
+        }
+      }
+    } else if (type === "payment.pending") {
+      if (order) {
+        const amount = order.total_amount;
+        const method = data?.payment_method || "mobile_money";
+        const ref = data?.reference || sessionRef;
+
+        await logTransaction(supabase, order.id, "payment", "pending", amount, method, ref);
+
+        if (order.customer_phone) {
+          await sendSMS(order.customer_phone, "payment_pending", {
+            orderId: order.id,
+            orderNumber: order.order_number,
+            amount: `TZS ${amount.toLocaleString()}`,
+          });
+        }
       }
     }
 

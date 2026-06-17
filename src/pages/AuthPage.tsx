@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 import { Loader2, Mail, Lock, UserPlus, LogIn, ArrowLeft } from 'lucide-react';
 
 type Tab = 'login' | 'register';
@@ -14,11 +15,23 @@ export function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [returnTo, setReturnTo] = useState('');
 
-  if (user) {
-    navigate({ name: 'home' });
-    return null;
-  }
+  useEffect(() => {
+    const hash = window.location.hash;
+    const match = hash.match(/\?return=([^&]+)/);
+    if (match) setReturnTo(match[1]);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      if (returnTo === 'checkout') {
+        navigate({ name: 'checkout' });
+      } else {
+        navigate({ name: 'home' });
+      }
+    }
+  }, [user, returnTo, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +55,19 @@ export function AuthPage() {
         setLoading(false);
         return;
       }
-      navigate({ name: 'home' });
+      // Send welcome email
+      try {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: email,
+            subject: 'Welcome to Retro-Tech Revival!',
+            type: 'welcome',
+            logoUrl: `${window.location.origin}/images/image.png`,
+          },
+        });
+      } catch (e) {
+        // Email sending failure should not block registration
+      }
     } else {
       const { error: err } = await login(email, password);
       if (err) {
@@ -50,7 +75,6 @@ export function AuthPage() {
         setLoading(false);
         return;
       }
-      navigate({ name: 'home' });
     }
     setLoading(false);
   }
