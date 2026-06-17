@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SNIPPE_API_KEY = "snp_246632d32322bbcd018a10234a1ec595f77c38beaf192d0b7eb6c385ef18f657";
+const SNIPPE_API_KEY = Deno.env.get("SNIPPE_API_KEY")!;
 const SNIPPE_BASE_URL = "https://api.snippe.sh";
 
 function normalizePhone(phone: string): string {
