@@ -194,7 +194,7 @@ export function OrderConfirmationPage({ orderId }: { orderId: string }) {
             </div>
             <div className="flex justify-between text-gray-600">
               <span>Delivery</span>
-              <span>{formatTZS(order.delivery_fee)}</span>
+              <span className="text-green-600">Free</span>
             </div>
             <div className="flex justify-between font-bold text-gray-900 text-base">
               <span>Total</span>

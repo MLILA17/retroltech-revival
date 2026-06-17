@@ -2,7 +2,7 @@ import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, ArrowLeft } from 'lucide-
 import { useApp } from '../context/AppContext';
 import { formatTZS } from '../types';
 
-const DELIVERY_FEE = 10000;
+const DELIVERY_FEE = 0;
 
 export function CartPage() {
   const { cart, navigate } = useApp();
@@ -123,7 +123,7 @@ export function CartPage() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Delivery</span>
-                  <span className="font-medium">{formatTZS(DELIVERY_FEE)}</span>
+                  <span className="font-medium text-green-600">Free</span>
                 </div>
                 <div className="border-t border-gray-100 pt-3 flex justify-between text-gray-900 font-bold text-base">
                   <span>Total</span>

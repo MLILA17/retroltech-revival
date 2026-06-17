@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
 import { formatTZS } from '../types';
 
-const DELIVERY_FEE = 10000;
+const DELIVERY_FEE = 0;
 
 interface FormData {
   name: string;
@@ -306,7 +306,7 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Delivery</span>
-                  <span>{formatTZS(DELIVERY_FEE)}</span>
+                  <span className="text-green-600">Free</span>
                 </div>
                 <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900">
                   <span>Total</span>
