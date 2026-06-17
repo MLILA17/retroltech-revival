@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { ShoppingCart, Search, Menu, X, Cpu, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, RefreshCw, LogIn, LogOut, User, Shield, ChevronDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { CATEGORIES } from '../types';
 
 export function Header() {
   const { navigate, cart, page } = useApp();
+  const { user, logout, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -17,7 +20,8 @@ export function Header() {
   }
 
   const isShop = page.name === 'shop';
-  const isHome = page.name === 'home';
+  const isAuth = page.name === 'auth';
+  const isAdminPage = page.name === 'admin';
 
   return (
     <header className="bg-gray-900 text-white sticky top-0 z-50 shadow-lg">
@@ -53,7 +57,7 @@ export function Header() {
           </form>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => navigate({ name: 'cart' })}
               className="relative p-2 rounded-lg hover:bg-gray-800 transition-colors"
@@ -65,6 +69,49 @@ export function Header() {
                 </span>
               )}
             </button>
+
+            {/* Auth */}
+            {!user ? (
+              <button
+                onClick={() => navigate({ name: 'auth' })}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isAuth ? 'bg-green-600 text-white' : 'hover:bg-gray-800 text-gray-300'
+                }`}
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign In</span>
+              </button>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline max-w-[120px] truncate">{user.email}</span>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-1 z-50">
+                    {isAdmin && (
+                      <button
+                        onClick={() => { navigate({ name: 'admin' }); setUserMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-gray-700 flex items-center gap-2"
+                      >
+                        <Shield className="w-4 h-4" /> Admin Panel
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { logout(); setUserMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="md:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors"
@@ -99,6 +146,16 @@ export function Header() {
               {cat}
             </button>
           ))}
+          {isAdmin && (
+            <button
+              onClick={() => navigate({ name: 'admin' })}
+              className={`px-3 py-1.5 text-sm rounded-md whitespace-nowrap transition-colors flex items-center gap-1 ${
+                isAdminPage ? 'bg-green-600 text-white' : 'text-green-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              <Shield className="w-3 h-3" /> Admin
+            </button>
+          )}
         </nav>
       </div>
 
@@ -133,6 +190,29 @@ export function Header() {
                 {cat}
               </button>
             ))}
+            {isAdmin && (
+              <button
+                onClick={() => { navigate({ name: 'admin' }); setMenuOpen(false); }}
+                className="text-left px-3 py-2 text-sm text-green-400 hover:text-white hover:bg-gray-800 rounded-md flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4" /> Admin Panel
+              </button>
+            )}
+            {!user ? (
+              <button
+                onClick={() => { navigate({ name: 'auth' }); setMenuOpen(false); }}
+                className="text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" /> Sign In
+              </button>
+            ) : (
+              <button
+                onClick={() => { logout(); setMenuOpen(false); }}
+                className="text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" /> Sign Out
+              </button>
+            )}
           </div>
         </div>
       )}

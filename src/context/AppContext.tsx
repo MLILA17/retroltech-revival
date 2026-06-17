@@ -37,6 +37,8 @@ function parsePage(hash: string): Page {
   if (route === 'order-confirmation') {
     return { name: 'order-confirmation', orderId: params.get('order') || '' };
   }
+  if (route === 'auth') return { name: 'auth' };
+  if (route === 'admin') return { name: 'admin' };
   return { name: 'home' };
 }
 
@@ -54,6 +56,10 @@ function pageToHash(page: Page): string {
     case 'checkout': return '#/checkout';
     case 'order-confirmation':
       return `#/order-confirmation?order=${page.orderId}`;
+    case 'auth':
+      return '#/auth';
+    case 'admin':
+      return '#/admin';
   }
 }
 

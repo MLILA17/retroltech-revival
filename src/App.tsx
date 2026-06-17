@@ -1,4 +1,5 @@
 import { AppProvider, useApp } from './context/AppContext';
+import { AuthProvider } from './context/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
@@ -7,6 +8,8 @@ import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
+import { AuthPage } from './pages/AuthPage';
+import { AdminPage } from './pages/AdminPage';
 
 function Router() {
   const { page } = useApp();
@@ -18,20 +21,24 @@ function Router() {
     case 'cart': return <CartPage />;
     case 'checkout': return <CheckoutPage />;
     case 'order-confirmation': return <OrderConfirmationPage orderId={page.orderId} />;
+    case 'auth': return <AuthPage />;
+    case 'admin': return <AdminPage />;
     default: return <HomePage />;
   }
 }
 
 export default function App() {
   return (
-    <AppProvider>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-1">
-          <Router />
+    <AuthProvider>
+      <AppProvider>
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <div className="flex-1">
+            <Router />
+          </div>
+          <Footer />
         </div>
-        <Footer />
-      </div>
-    </AppProvider>
+      </AppProvider>
+    </AuthProvider>
   );
 }

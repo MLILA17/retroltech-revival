@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Filter, SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Product, CATEGORIES, formatTZS } from '../types';
+import { Product, CATEGORIES } from '../types';
 import { useApp } from '../context/AppContext';
 import { ProductCard } from '../components/ProductCard';
 
@@ -15,7 +15,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export function ShopPage() {
-  const { page, navigate, cart } = useApp();
+  const { page, navigate } = useApp();
   const shopPage = page as Extract<typeof page, { name: 'shop' }>;
 
   const [products, setProducts] = useState<Product[]>([]);

@@ -1,4 +1,4 @@
-import { ShoppingCart, Star, Tag } from 'lucide-react';
+import { ShoppingCart, Star } from 'lucide-react';
 import { Product, formatTZS } from '../types';
 import { useApp } from '../context/AppContext';
 

@@ -42,7 +42,9 @@ export type Page =
   | { name: 'product'; slug: string }
   | { name: 'cart' }
   | { name: 'checkout' }
-  | { name: 'order-confirmation'; orderId: string };
+  | { name: 'order-confirmation'; orderId: string }
+  | { name: 'auth' }
+  | { name: 'admin' };
 
 export const CATEGORIES = [
   'Refurbished Laptops',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Shield, Wrench, Truck, Leaf, Laptop, Smartphone, Tablet, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Product, formatTZS, CATEGORIES } from '../types';
+import { Product, CATEGORIES } from '../types';
 import { useApp } from '../context/AppContext';
 import { ProductCard } from '../components/ProductCard';
 
