@@ -39,6 +39,7 @@ function parsePage(hash: string): Page {
   }
   if (route === 'auth') return { name: 'auth' };
   if (route === 'admin') return { name: 'admin' };
+  if (route === 'verify-email') return { name: 'verify-email' };
   return { name: 'home' };
 }
 
@@ -60,6 +61,8 @@ function pageToHash(page: Page): string {
       return '#/auth';
     case 'admin':
       return '#/admin';
+    case 'verify-email':
+      return '#/verify-email';
   }
 }
 

@@ -5,94 +5,73 @@ import { Loader2, CheckCircle, XCircle, Mail, ArrowLeft } from 'lucide-react';
 
 export function VerifyEmailPage() {
   const { navigate } = useApp();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired' | 'already_verified'>('loading');
   const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.replace('#', '') || window.location.search);
+    // Parse URL parameters from hash or query string
+    const hash = window.location.hash.replace('#', '');
+    const params = new URLSearchParams(hash || window.location.search);
     const token = params.get('token');
-    const email = params.get('email');
+    const emailParam = params.get('email');
 
-    if (!token || !email) {
+    if (!token || !emailParam) {
       setStatus('error');
       setMessage('Invalid verification link. Please request a new verification email.');
       return;
     }
 
-    verifyEmail(token, email);
+    setEmail(emailParam);
+    verifyEmail(token, emailParam);
   }, []);
 
   async function verifyEmail(token: string, email: string) {
     try {
-      // Get the user by email
-      const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+      const { data, error } = await supabase.functions.invoke('verify-email', {
+        body: { token, email },
+      });
 
-      if (listError || !users) {
+      if (error) {
+        console.error('Verification error:', error);
         setStatus('error');
         setMessage('Failed to verify email. Please try again later.');
         return;
       }
 
-      const user = users.find(u => u.email === email);
-      if (!user) {
-        setStatus('error');
-        setMessage('Account not found. Please register again.');
+      if (data.status === 'already_verified') {
+        setStatus('already_verified');
+        setMessage('Your email is already verified!');
         return;
       }
 
-      const metadata = user.user_metadata || {};
-      const storedToken = metadata.email_verification_token;
-      const expiresAt = metadata.email_verification_expires;
-
-      // Check if token matches
-      if (storedToken !== token) {
-        setStatus('error');
-        setMessage('Invalid verification token. Please request a new verification email.');
-        return;
-      }
-
-      // Check if token expired
-      if (expiresAt && new Date(expiresAt) < new Date()) {
+      if (data.status === 'expired') {
         setStatus('expired');
         setMessage('Verification link has expired. Please request a new one.');
         return;
       }
 
-      // Already verified?
-      if (metadata.email_verified) {
-        setStatus('success');
-        setMessage('Your email is already verified!');
-        return;
-      }
-
-      // Mark as verified
-      const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-        user_metadata: {
-          ...metadata,
-          email_verified: true,
-          email_verification_token: null,
-          email_verification_expires: null,
-        },
-      });
-
-      if (updateError) {
+      if (data.status === 'invalid_token') {
         setStatus('error');
-        setMessage('Failed to verify email. Please try again later.');
+        setMessage('Invalid verification token. Please request a new verification email.');
         return;
       }
 
-      setStatus('success');
-      setMessage('Your email has been verified successfully! You can now log in to your account.');
+      if (data.success) {
+        setStatus('success');
+        setMessage('Your email has been verified successfully! You can now log in to your account.');
+      } else {
+        setStatus('error');
+        setMessage(data.error || 'Verification failed. Please try again.');
+      }
     } catch (err: any) {
+      console.error('Verification exception:', err);
       setStatus('error');
       setMessage(err.message || 'An unexpected error occurred.');
     }
   }
 
   async function resendVerification() {
-    const params = new URLSearchParams(window.location.hash.replace('#', '') || window.location.search);
-    const email = params.get('email');
-
     if (!email) {
       setMessage('Email not found. Please try logging in again.');
       return;
@@ -102,28 +81,30 @@ export function VerifyEmailPage() {
     setMessage('Sending new verification email...');
 
     try {
-      const { data: { users } } = await supabase.auth.admin.listUsers();
-      const user = users?.find(u => u.email === email);
+      // First get the user by email from our system
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
+      // If user is logged in, use their ID
+      if (user) {
+        const { error } = await supabase.functions.invoke('send-verification-email', {
+          body: { email, userId: user.id },
+        });
+
+        if (error) {
+          setStatus('error');
+          setMessage('Failed to send verification email. Please try again.');
+          return;
+        }
+
+        setStatus('success');
+        setMessage('A new verification email has been sent. Please check your inbox.');
+      } else {
+        // User not logged in - ask them to login first or register again
         setStatus('error');
-        setMessage('Account not found.');
-        return;
+        setMessage('Please log in to request a new verification email.');
       }
-
-      const { error } = await supabase.functions.invoke('send-verification-email', {
-        body: { email, userId: user.id },
-      });
-
-      if (error) {
-        setStatus('error');
-        setMessage('Failed to send verification email. Please try again.');
-        return;
-      }
-
-      setStatus('success');
-      setMessage('A new verification email has been sent. Please check your inbox.');
     } catch (err) {
+      console.error('Resend error:', err);
       setStatus('error');
       setMessage('Failed to send verification email.');
     }
@@ -142,23 +123,24 @@ export function VerifyEmailPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xl p-8 text-center">
           <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${
             status === 'loading' ? 'bg-blue-100' :
-            status === 'success' ? 'bg-green-100' :
+            status === 'success' || status === 'already_verified' ? 'bg-green-100' :
             'bg-red-100'
           }`}>
             {status === 'loading' && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
-            {status === 'success' && <CheckCircle className="w-8 h-8 text-green-500" />}
+            {(status === 'success' || status === 'already_verified') && <CheckCircle className="w-8 h-8 text-green-500" />}
             {(status === 'error' || status === 'expired') && <XCircle className="w-8 h-8 text-red-500" />}
           </div>
 
           <h1 className="text-xl font-bold text-gray-900 mb-2 font-['Space_Grotesk']">
             {status === 'loading' ? 'Verifying Email...' :
              status === 'success' ? 'Email Verified!' :
+             status === 'already_verified' ? 'Already Verified' :
              status === 'expired' ? 'Link Expired' : 'Verification Failed'}
           </h1>
 
           <p className="text-sm text-gray-600 mb-6">{message}</p>
 
-          {status === 'success' && (
+          {(status === 'success' || status === 'already_verified') && (
             <button
               onClick={() => navigate({ name: 'auth' })}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors"
@@ -171,9 +153,18 @@ export function VerifyEmailPage() {
             <div className="space-y-3">
               <button
                 onClick={resendVerification}
-                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors"
+                disabled={status === 'loading'}
+                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 rounded-xl transition-colors"
               >
-                <Mail className="w-4 h-4" /> Resend Verification Email
+                {status === 'loading' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" /> Resend Verification Email
+                  </>
+                )}
               </button>
               <button
                 onClick={() => navigate({ name: 'auth' })}

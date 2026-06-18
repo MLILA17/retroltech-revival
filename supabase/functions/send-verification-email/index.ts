@@ -8,8 +8,9 @@ const corsHeaders = {
 };
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const FROM_EMAIL = "noreply@dml-tech.online";
+const FROM_EMAIL = "Retro-Tech Revival <noreply@dml-tech.online>";
 const VERIFICATION_EXPIRY_HOURS = 24;
+const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "https://dml-tech.online";
 
 function generateToken(): string {
   const array = new Uint8Array(32);
@@ -24,7 +25,7 @@ async function sendResendEmail(to: string, subject: string, html: string, idempo
   };
 
   const body: Record<string, any> = {
-    from: `Retro-Tech Revival <${FROM_EMAIL}>`,
+    from: FROM_EMAIL,
     to: [to],
     subject,
     html,
@@ -122,9 +123,10 @@ Deno.serve(async (req: Request) => {
       // Continue anyway, we can still send the email
     }
 
-    // Build verification link
-    const baseUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".dml-tech.online") || "https://dml-tech.online";
-    const verificationLink = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+    // Build verification link - use the app base URL
+    const verificationLink = `${APP_BASE_URL}/#verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+
+    console.log("Sending verification email to:", email, "link:", verificationLink);
 
     // Send verification email
     const html = buildVerificationEmail(verificationLink);
