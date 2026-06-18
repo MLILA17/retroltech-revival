@@ -12,7 +12,7 @@ interface AuthContextValue {
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  register: (email: string, password: string) => Promise<{ error: string | null }>;
+  register: (email: string, password: string) => Promise<{ error: string | null; needsVerification?: boolean }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -86,12 +86,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (roleError) {
         return { error: roleError.message };
       }
+
+      // Send verification email
+      try {
+        await supabase.functions.invoke('send-verification-email', {
+          body: { email, userId: data.user.id },
+        });
+      } catch (e) {
+        console.error('Failed to send verification email:', e);
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
         setUser({ id: data.user.id, email: data.user.email!, role: 'user' });
       }
     }
-    return { error: null };
+    return { error: null, needsVerification: true };
   }, []);
 
   const logout = useCallback(async () => {

@@ -1,0 +1,1 @@
+ALTER TABLE sms_logs ADD COLUMN IF NOT EXISTS sms_type TEXT;

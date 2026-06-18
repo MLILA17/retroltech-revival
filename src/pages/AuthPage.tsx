@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { Loader2, Mail, Lock, UserPlus, LogIn, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, Lock, UserPlus, LogIn, ArrowLeft, CheckCircle } from 'lucide-react';
 
 type Tab = 'login' | 'register';
 
@@ -15,6 +15,7 @@ export function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [returnTo, setReturnTo] = useState('');
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export function AuthPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     if (tab === 'register') {
@@ -49,9 +51,14 @@ export function AuthPage() {
         setLoading(false);
         return;
       }
-      const { error: err } = await register(email, password);
+      const { error: err, needsVerification } = await register(email, password);
       if (err) {
         setError(err);
+        setLoading(false);
+        return;
+      }
+      if (needsVerification) {
+        setSuccess('Account created! Please check your email to verify your account before logging in.');
         setLoading(false);
         return;
       }
@@ -124,6 +131,13 @@ export function AuthPage() {
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">
+              <CheckCircle className="w-4 h-4 inline mr-2" />
+              {success}
             </div>
           )}
 

@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_DvoZLyrq_DzSJ9D4UxP174Da3yGuUNC7F";
-const FROM_EMAIL = "daudymussa1705@gmail.com";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const FROM_EMAIL = "Retro-Tech Revival <noreply@dml-tech.online>";
 
 async function sendResendEmail(to: string, subject: string, html: string, text?: string) {
   const response = await fetch("https://api.resend.com/emails", {

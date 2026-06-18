@@ -44,7 +44,8 @@ export type Page =
   | { name: 'checkout' }
   | { name: 'order-confirmation'; orderId: string }
   | { name: 'auth' }
-  | { name: 'admin' };
+  | { name: 'admin' }
+  | { name: 'verify-email' };
 
 export const CATEGORIES = [
   'Refurbished Laptops',

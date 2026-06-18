@@ -7,10 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const WEBHOOK_SECRET = "whsec_5d86ed5914da782f58011932eb2e45d9197c19ec44efc1d44bf4c4bc4da01c2f";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_DvoZLyrq_DzSJ9D4UxP174Da3yGuUNC7F";
-const FROM_EMAIL = "daudymussa1705@gmail.com";
-const RAFIKI_API_KEY = Deno.env.get("RAFIKI_API_KEY") || "sk_HbDq195unGBJmaiuj8hvwg4r1NyeUHUn5gW7hTA7b5DGkmIV";
+const WEBHOOK_SECRET = Deno.env.get("SNIPPE_WEBHOOK_SECRET")!;
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const FROM_EMAIL = "Retro-Tech Revival <noreply@dml-tech.online>";
+const RAFIKI_API_KEY = Deno.env.get("RAFIKI_API_KEY")!;
 const RAFIKI_SENDER_ID = "DMLTECH";
 
 const LOGO_URL = "https://vywdpyaxkdhtnyoaumkn.supabase.co/storage/v1/object/public/public/logo.png";

@@ -10,6 +10,7 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 
 function Router() {
   const { page } = useApp();
@@ -23,6 +24,7 @@ function Router() {
     case 'order-confirmation': return <OrderConfirmationPage orderId={page.orderId} />;
     case 'auth': return <AuthPage />;
     case 'admin': return <AdminPage />;
+    case 'verify-email': return <VerifyEmailPage />;
     default: return <HomePage />;
   }
 }
